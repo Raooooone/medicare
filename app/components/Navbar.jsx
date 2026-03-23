@@ -3,8 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import LogoutButton from "./LogoutButton";
 
-// FORCE LE RENDU DYNAMIQUE : Empêche Next.js de mettre la Navbar en cache statique
-// C'est essentiel pour que la session soit détectée dès le redirect du login.
 export const dynamic = "force-dynamic";
 
 export default async function Navbar() {
@@ -17,23 +15,16 @@ export default async function Navbar() {
           MediCare
         </Link>
         
-        {/* Liens de navigation basés sur le rôle */}
         {session && (
           <ul className="flex gap-6 text-gray-600 text-sm font-medium">
             {session.user.role === "ADMIN" && (
-              <li>
-                <Link href="/admin" className="hover:text-blue-600 transition">Tableau de bord</Link>
-              </li>
+              <li><Link href="/admin" className="hover:text-blue-600 transition">Tableau de bord</Link></li>
             )}
             {session.user.role === "MEDECIN" && (
-              <li>
-                <Link href="/medecin" className="hover:text-blue-600 transition">Planning Patients</Link>
-              </li>
+              <li><Link href="/medecin" className="hover:text-blue-600 transition">Planning Patients</Link></li>
             )}
             {session.user.role === "PATIENT" && (
-              <li>
-                <Link href="/patient" className="hover:text-blue-600 transition">Mes RDV</Link>
-              </li>
+              <li><Link href="/patient" className="hover:text-blue-600 transition">Mes RDV</Link></li>
             )}
           </ul>
         )}
@@ -42,14 +33,31 @@ export default async function Navbar() {
       <div className="flex items-center gap-4">
         {session ? (
           <div className="flex items-center gap-4 animate-in fade-in duration-500">
-            <div className="hidden sm:block text-right border-r pr-4 border-gray-200">
-              <p className="text-sm font-bold text-gray-800">
-                {session.user.name}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-blue-500 font-black">
-                {session.user.role}
-              </p>
+            {/* Zone Profil Cliquable pour le Médecin */}
+            <div className="hidden sm:flex items-center gap-3 border-r pr-4 border-gray-200">
+              <div className="text-right">
+                {session.user.role === "MEDECIN" ? (
+                  <Link 
+                    href="/medecin/profil" 
+                    className="text-sm font-bold text-gray-800 hover:text-blue-600 transition-colors block"
+                    title="Voir mon profil"
+                  >
+                    {session.user.name}
+                  </Link>
+                ) : (
+                  <p className="text-sm font-bold text-gray-800">{session.user.name}</p>
+                )}
+                <p className="text-[10px] uppercase tracking-wider text-blue-500 font-black">
+                  {session.user.role}
+                </p>
+              </div>
+              
+              {/* Avatar ou Initiale */}
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-200">
+                {session.user.name.charAt(0).toUpperCase()}
+              </div>
             </div>
+            
             <LogoutButton />
           </div>
         ) : (
