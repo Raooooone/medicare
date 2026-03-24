@@ -1,13 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // Ceci permet de déployer même s'il y a des petites erreurs de code
-    ignoreDuringBuilds: true,
-  },
+  // On désactive la vérification stricte pendant le build pour laisser passer le déploiement
   typescript: {
-    // Idem pour TypeScript si tu l'utilises
     ignoreBuildErrors: true,
   },
+  // Note: Si 'eslint' ne marche plus ici, c'est qu'il faut le gérer 
+  // via le fichier .eslintrc ou les scripts de build.
+  // Pour l'instant, on laisse le reste par défaut.
 };
 
 export default nextConfig;
