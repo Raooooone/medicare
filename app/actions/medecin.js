@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
 
 /**
  * Vérifie si l'utilisateur est un médecin authentifié
@@ -41,26 +43,57 @@ export async function updateAppointmentStatus(appointmentId, status) {
 }
 
 /**
- * MET À JOUR LE PROFIL DU MÉDECIN (Fonction manquante corrigée)
- * Gère la modification du nom, téléphone, horaires et image
+ * MET À JOUR LE PROFIL DU MÉDECIN
  */
 export async function updateMedecinProfile(formData) {
   const session = await verifyMedecin();
   
-  const name = formData.get("name");
-  const phone = formData.get("phone");
-  const workingHours = formData.get("workingHours");
-  const image = formData.get("image");
+  // 1. SÉCURITÉ : On force la conversion en chaîne de caractères (String)
+  // Sinon Prisma risque de bloquer lors de la sauvegarde !
+  const name = formData.get("name")?.toString() || "";
+  const phone = formData.get("phone")?.toString() || null;
+  const workingHours = formData.get("workingHours")?.toString() || null;
+
+  // -- GESTION DE LA NOUVELLE IMAGE --
+  const file = formData.get("image");
+  let newImagePath = undefined; 
+
+  if (file && typeof file === "object" && file.size > 0) {
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      // On nettoie le nom du fichier pour enlever les caractères bizarres
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+      const filename = Date.now() + "_" + safeFileName;
+      
+      const uploadDir = path.join(process.cwd(), "public/uploads");
+      await mkdir(uploadDir, { recursive: true }); 
+      
+      const filepath = path.join(uploadDir, filename);
+      await writeFile(filepath, buffer);
+      
+      newImagePath = `/uploads/${filename}`;
+    } catch (error) {
+      console.error("Erreur lors de l'upload de l'image:", error);
+      return { error: "Erreur d'upload du fichier : " + error.message };
+    }
+  }
 
   try {
+    // Préparation des données à envoyer à Prisma
+    const dataToUpdate = {
+      name: name,
+      contact: phone,
+      workingHours: workingHours,
+    };
+
+    if (newImagePath) {
+      dataToUpdate.image = newImagePath;
+    }
+
+    // Mise à jour dans la base de données
     await prisma.user.update({
       where: { id: session.user.id },
-      data: {
-        name: name,
-        contact: phone,      // Champ téléphone
-        workingHours: workingHours, // Horaires de travail
-        image: image,        // Photo de profil
-      },
+      data: dataToUpdate,
     });
 
     // On rafraîchit les pages pour voir les changements immédiatement
@@ -69,7 +102,38 @@ export async function updateMedecinProfile(formData) {
     
     return { success: true };
   } catch (error) {
-    console.error("Erreur mise à jour profil:", error);
-    return { error: "Impossible de mettre à jour le profil." };
+    console.error("Erreur Prisma:", error);
+    // 👇 NOUVEAU : On renvoie l'erreur EXACTE pour comprendre ce qui bloque ! 👇
+    return { error: "Erreur Base de données : " + error.message };
+  }
+}
+
+/**
+ * AJOUTE UNE NOTE DE CONSULTATION AU DOSSIER
+ */
+export async function addConsultationNote(appointmentId, notes) {
+  const session = await verifyMedecin();
+
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId }
+  });
+
+  if (!appointment || appointment.doctorId !== session.user.id) {
+    return { error: "Vous ne pouvez modifier que vos propres rendez-vous." };
+  }
+
+  try {
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { notes: notes }
+    });
+
+    revalidatePath("/medecin");
+    revalidatePath("/patient");
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Erreur lors de l'ajout de la note:", error);
+    return { error: "Erreur lors de l'enregistrement de la note." };
   }
 }

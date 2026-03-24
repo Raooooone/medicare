@@ -3,12 +3,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/app/actions/auth";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState("PATIENT");
+  const [fileName, setFileName] = useState(""); // NOUVEAU : Pour afficher le nom du fichier
   
   // Gestion des étapes pour le médecin (0: Infos de base, 1: Spécialité, 2: Image)
   const [step, setStep] = useState(0);
@@ -23,21 +25,39 @@ export default function RegisterPage() {
   };
 
   const handleSubmit = async (e) => {
-    // Si c'est un événement de formulaire, on empêche le refresh
     if (e.preventDefault) e.preventDefault();
     
     setLoading(true);
     setError("");
 
     const formData = new FormData(document.getElementById("register-form"));
+    const email = formData.get("email");
+    const password = formData.get("password");
+
     const res = await registerUser(formData);
 
     if (res?.error) {
       setError(res.error);
       setLoading(false);
-      setStep(0); // Retour au début en cas d'erreur
+      // Si erreur de spécialité, on ramène à l'étape 1
+      if (res.error.includes("spécialité")) setStep(1);
+      else setStep(0); 
     } else {
-      router.push("/auth/login?registered=true");
+      // Connexion automatique après l'inscription
+      const loginRes = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (loginRes?.error) {
+        router.push("/auth/login");
+      } else {
+        if (selectedRole === "ADMIN") router.push("/admin");
+        else if (selectedRole === "MEDECIN") router.push("/medecin");
+        else router.push("/patient");
+        router.refresh();
+      }
     }
   };
 
@@ -51,13 +71,14 @@ export default function RegisterPage() {
           <p className="text-red-500 text-center mb-4 text-sm bg-red-50 p-2 border border-red-200 rounded">{error}</p>
         )}
 
-        <form id="register-form" onSubmit={handleNextStep} className="flex flex-col gap-4">
+        {/* 👇 NOUVEAU : Ajout de encType pour permettre l'upload de fichiers 👇 */}
+        <form id="register-form" onSubmit={handleNextStep} encType="multipart/form-data" className="flex flex-col gap-4">
           
           {/* ÉTAPE 0 : INFOS DE BASE */}
-          <div className={step === 0 ? "flex flex-col gap-4" : "hidden"}>
-            <input type="text" name="name" placeholder="Nom complet" required className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-            <input type="email" name="email" placeholder="Adresse Email" required className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-            <input type="password" name="password" placeholder="Mot de passe" required minLength="6" className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+          <div className={step === 0 ? "flex flex-col gap-4 animate-in fade-in slide-in-from-right-4" : "hidden"}>
+            <input type="text" name="name" placeholder="Nom complet" required={step===0} className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+            <input type="email" name="email" placeholder="Adresse Email" required={step===0} className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+            <input type="password" name="password" placeholder="Mot de passe" required={step===0} minLength="6" className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
 
             <div className="flex flex-col gap-1 mt-2">
               <label className="text-sm font-medium text-gray-700">Je suis un :</label>
@@ -72,31 +93,55 @@ export default function RegisterPage() {
             </div>
 
             {selectedRole === "ADMIN" && (
-              <input type="password" name="adminCode" placeholder="Code secret Admin" required className="border-2 border-red-200 p-2 rounded bg-red-50 outline-none" />
+              <input type="password" name="adminCode" placeholder="Code secret Admin" className="border-2 border-red-200 p-2 rounded bg-red-50 outline-none" />
             )}
           </div>
 
-          {/* ÉTAPE 1 : SPÉCIALITÉ (Uniquement Médecin) */}
-          {selectedRole === "MEDECIN" && step === 1 && (
-            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4">
-              <label className="font-medium text-gray-700">Quelle est votre spécialité ?</label>
-              <input type="text" name="specialite" placeholder="Ex: Cardiologue, Généraliste..." required className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
-          )}
+          {/* ÉTAPE 1 : SPÉCIALITÉ */}
+          <div className={selectedRole === "MEDECIN" && step === 1 ? "flex flex-col gap-4 animate-in fade-in slide-in-from-right-4" : "hidden"}>
+            <label className="font-medium text-gray-700">Quelle est votre spécialité ?</label>
+            <input type="text" name="specialite" placeholder="Ex: Cardiologue, Généraliste..." className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
 
-          {/* ÉTAPE 2 : IMAGE (Uniquement Médecin) */}
-          {selectedRole === "MEDECIN" && step === 2 && (
-            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4">
-              <label className="font-medium text-gray-700">Lien de votre photo de profil</label>
-              <input type="text" name="image" placeholder="https://lien-de-votre-photo.com" required className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-              <p className="text-xs text-gray-500 italic">Note: Utilisez une URL d'image valide.</p>
+          {/* ÉTAPE 2 : UPLOAD D'IMAGE */}
+          <div className={selectedRole === "MEDECIN" && step === 2 ? "flex flex-col gap-4 animate-in fade-in" : "hidden"}>
+            <label className="font-medium text-gray-700">Photo de profil</label>
+            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors relative">
+              <input 
+                type="file" 
+                name="image" // ⚠️ Attention : le nom doit être "image" pour correspondre à votre fichier backend auth.js !
+                accept="image/*" 
+                className="hidden" 
+                id="file-upload"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) setFileName(file.name);
+                }}
+              />
+              <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center w-full">
+                {fileName ? (
+                  <>
+                    <svg className="w-10 h-10 text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span className="text-sm font-semibold text-green-700 text-center break-all">{fileName}</span>
+                    <span className="text-xs text-gray-500 mt-1 hover:underline">Changer de photo</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-10 h-10 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-sm text-gray-600">Cliquez pour choisir une photo</span>
+                  </>
+                )}
+              </label>
             </div>
-          )}
+            <p className="text-xs text-gray-500 italic">Formats acceptés : JPG, PNG (Max 2Mo)</p>
+          </div>
           
           <button 
             type="submit" 
             disabled={loading} 
-            className="py-3 rounded-lg font-bold text-white mt-4 transition-all bg-blue-600 hover:bg-blue-700"
+            className="py-3 rounded-lg font-bold text-white mt-4 transition-all bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? "Chargement..." : (selectedRole === "MEDECIN" && step < 2 ? "Continuer" : "S'inscrire")}
           </button>

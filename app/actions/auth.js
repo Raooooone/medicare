@@ -3,20 +3,46 @@
 import { prisma } from "../../lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+// 👇 On ajoute 'mkdir' pour créer le dossier automatiquement
+import { writeFile, mkdir } from "fs/promises"; 
+import path from "path";
 
 export async function registerUser(formData) {
-  // Extraction des données de base
   const name = formData.get("name")?.toString();
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
   const role = formData.get("role")?.toString() || "PATIENT";
   const adminCode = formData.get("adminCode")?.toString();
-
-  // Nouvelles données spécifiques au Médecin
   const specialite = formData.get("specialite")?.toString();
-  const image = formData.get("image")?.toString();
+  
+  // ==========================================
+  // 📸 GESTION DE L'UPLOAD DE L'IMAGE
+  // ==========================================
+  const file = formData.get("image");
+  let imagePath = null; 
 
-  // 1. Validation de base des champs
+  if (file && typeof file === "object" && file.size > 0) {
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const filename = Date.now() + "_" + file.name.replaceAll(" ", "_");
+      
+      // 1. On définit le chemin du dossier d'upload
+      const uploadDir = path.join(process.cwd(), "public/uploads");
+      
+      // 2. ✨ LA MAGIE ICI : On crée le dossier s'il n'existe pas ! ✨
+      await mkdir(uploadDir, { recursive: true });
+      
+      // 3. On sauvegarde l'image à l'intérieur
+      const filepath = path.join(uploadDir, filename);
+      await writeFile(filepath, buffer);
+      
+      imagePath = `/uploads/${filename}`;
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde de l'image:", error);
+      return { error: "Erreur lors de l'enregistrement de l'image sur le serveur." };
+    }
+  }
+
   if (!name || !email || !password) {
     return { error: "Tous les champs obligatoires doivent être remplis." };
   }
@@ -25,14 +51,11 @@ export async function registerUser(formData) {
     return { error: "Le mot de passe doit contenir au moins 6 caractères." };
   }
 
-  // Validation spécifique pour le Médecin (Étapes supplémentaires)
   if (role === "MEDECIN") {
     if (!specialite) return { error: "La spécialité est requise pour les médecins." };
-    if (!image) return { error: "Une image de profil est requise pour les médecins." };
   }
 
   try {
-    // 2. Validation de sécurité stricte pour le rôle ADMIN
     if (role === "ADMIN") {
       const SYSTEM_ADMIN_CODE = process.env.ADMIN_SECRET_KEY || "MON_CODE_SUPER_SECRET_123";
       if (adminCode !== SYSTEM_ADMIN_CODE) {
@@ -40,7 +63,6 @@ export async function registerUser(formData) {
       }
     }
 
-    // 3. Vérifier si l'utilisateur existe déjà
     const existingUser = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -49,25 +71,20 @@ export async function registerUser(formData) {
       return { error: "Cet email est déjà utilisé par un autre compte." };
     }
 
-    // 4. Hachage sécurisé du mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 5. Création de l'utilisateur dans PostgreSQL
     await prisma.user.create({
       data: {
         name: name,
         email: email.toLowerCase(),
         password: hashedPassword,
         role: role,
-        // Ces champs seront null si l'utilisateur n'est pas médecin
         specialite: role === "MEDECIN" ? specialite : null,
-        image: role === "MEDECIN" ? image : null,
+        image: role === "MEDECIN" ? imagePath : null, 
       },
     });
 
-    // 6. Mise à jour du cache
     revalidatePath("/admin"); 
-
     return { success: true };
 
   } catch (error) {

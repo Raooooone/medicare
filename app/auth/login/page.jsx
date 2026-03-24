@@ -107,8 +107,7 @@ export default function LoginPage() {
             onClick={() => signIn("google")} 
             className="border border-gray-200 py-2.5 rounded-lg font-medium hover:bg-gray-50 flex justify-center items-center gap-3 transition-colors text-gray-700"
           >
-            <img src="https://www.svgrepo.com/show/475656/google_color.svg" className="w-5 h-5" alt="Google" />
-            Continuer avec Google
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" className="w-5 h-5" alt="Google" />Continuer avec Google
           </button>
           <button 
             type="button"

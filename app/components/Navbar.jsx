@@ -2,11 +2,26 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import LogoutButton from "./LogoutButton";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function Navbar() {
   const session = await getServerSession(authOptions);
+  
+  let userImage = null;
+  if (session?.user?.id) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { image: true }
+    });
+    userImage = dbUser?.image;
+  }
+
+  // 👇 Définition dynamique du lien de profil selon le rôle
+  const profileHref = session?.user?.role === "MEDECIN" 
+    ? "/medecin/profile" 
+    : "/patient/profile";
 
   return (
     <nav className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center sticky top-0 z-50">
@@ -33,29 +48,37 @@ export default async function Navbar() {
       <div className="flex items-center gap-4">
         {session ? (
           <div className="flex items-center gap-4 animate-in fade-in duration-500">
-            {/* Zone Profil Cliquable pour le Médecin */}
+            {/* Zone Profil Cliquable (Médecin et Patient) */}
             <div className="hidden sm:flex items-center gap-3 border-r pr-4 border-gray-200">
               <div className="text-right">
-                {session.user.role === "MEDECIN" ? (
-                  <Link 
-                    href="/medecin/profil" 
-                    className="text-sm font-bold text-gray-800 hover:text-blue-600 transition-colors block"
-                    title="Voir mon profil"
-                  >
-                    {session.user.name}
-                  </Link>
-                ) : (
-                  <p className="text-sm font-bold text-gray-800">{session.user.name}</p>
-                )}
+                {/* Le nom devient un lien pour tout le monde (sauf Admin si tu n'as pas de page profil pour lui)
+                */}
+                <Link 
+                  href={profileHref} 
+                  className="text-sm font-bold text-gray-800 hover:text-blue-600 transition-colors block"
+                  title="Voir mon profil"
+                >
+                  {session.user.name}
+                </Link>
                 <p className="text-[10px] uppercase tracking-wider text-blue-500 font-black">
                   {session.user.role}
                 </p>
               </div>
               
-              {/* Avatar ou Initiale */}
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-200">
-                {session.user.name.charAt(0).toUpperCase()}
-              </div>
+              {/* Avatar cliquable vers le profil également */}
+              <Link href={profileHref} className="hover:opacity-80 transition-opacity">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm border-2 border-blue-200 overflow-hidden shadow-sm">
+                  {userImage ? (
+                    <img 
+                      src={userImage} 
+                      alt={`Profil de ${session.user.name}`} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    session.user.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+              </Link>
             </div>
             
             <LogoutButton />

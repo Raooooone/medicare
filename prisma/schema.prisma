@@ -73,7 +73,7 @@ model Appointment {
   date        DateTime
   status      String   @default("PENDING") 
   reason      String?
-
+  notes            String?
   doctorId    String
   doctor      User     @relation("DoctorAppointments", fields: [doctorId], references: [id])
 
@@ -90,4 +90,10 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
