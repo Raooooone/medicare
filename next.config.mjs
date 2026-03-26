@@ -1,13 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // On enlève le bloc eslint qui cause l'erreur
+  // On garde juste le strict minimum pour que ça passe
   typescript: {
-    // !! ATTENTION !!
-    // Permet au build de réussir même si ton projet a des erreurs TypeScript.
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Ignore aussi les erreurs de linting pour être sûr que ça passe
-    ignoreDuringBuilds: true,
   },
 };
 
