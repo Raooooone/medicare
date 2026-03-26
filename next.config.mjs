@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // This allows production builds to successfully complete 
-    // even if your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
-}
+  /* IMPORTANT: 
+     1. Do NOT include 'eslint' here (it's no longer supported).
+     2. Do NOT use 'module.exports'.
+  */
+  reactStrictMode: true,
+  // Add other valid options here (e.g., images, rewrites)
+};
 
-module.exports = nextConfig
+export default nextConfig;
