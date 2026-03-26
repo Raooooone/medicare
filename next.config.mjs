@@ -1,13 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
+    // Force le build même si Vercel croit voir du TypeScript
     ignoreBuildErrors: true,
   },
   eslint: {
+    // Ignore aussi le linting pour accélérer le build
     ignoreDuringBuilds: true,
   },
-  // Désactive Turbopack si nécessaire pour la compatibilité
-  transpilePackages: ['@next-auth/prisma-adapter'],
 };
 
 export default nextConfig;
