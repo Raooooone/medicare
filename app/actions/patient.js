@@ -1,51 +1,54 @@
-// /app/actions/patient.js
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { prisma } from "../../lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "../api/auth/[...nextauth]/route";
+import { revalidatePath } from "next/cache";
 
-async function verifyPatient() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "PATIENT") {
-    throw new Error("Action non autorisée. Réservé aux patients.");
-  }
-  return session;
-}
-
+/**
+ * Action pour réserver un rendez-vous
+ * @param {string} doctorId - L'ID du médecin sélectionné
+ * @param {string} dateStr - La date choisie au format string (ex: ISO)
+ */
 export async function bookAppointment(doctorId, dateStr) {
-  const session = await verifyPatient();
-
-  // Création du rendez-vous
-  await prisma.appointment.create({
-    data: {
-      patientId: session.user.id, // L'ID vient de la session sécurisée, on ne fait pas confiance au client
-      doctorId: doctorId,
-      date: new Date(dateStr), // Conversion de la chaîne de date du formulaire en objet Date
-      status: "PENDING"        // En attente de validation par le médecin par défaut
+  try {
+    // 1. Vérification de la session utilisateur
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user || !session.user.id) {
+      return { error: "Vous devez être connecté pour prendre rendez-vous." };
     }
-  });
 
-  // Met à jour la page du patient pour afficher le nouveau RDV dans l'historique
-  revalidatePath("/patient");
-  return { success: true };
-}
-
-export async function updatePatientProfile(formData) {
-  const session = await verifyPatient();
-  
-  const contact = formData.get("contact");
-  const maladie = formData.get("maladie");
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: {
-      contact: contact,
-      maladie: maladie
+    // 2. Validation des données reçues
+    if (!doctorId || !dateStr) {
+      return { error: "Médecin ou date manquante." };
     }
-  });
 
-  revalidatePath("/patient");
-  return { success: true };
+    // 3. Création du rendez-vous dans Supabase via Prisma
+    const newAppointment = await prisma.appointment.create({
+      data: {
+        date: new Date(dateStr),
+        status: "EN_ATTENTE", // Statut par défaut
+        patientId: session.user.id, // ID récupéré de la session sécurisée
+        doctorId: doctorId,
+      },
+    });
+
+    // 4. Rafraîchissement du cache Next.js pour voir le changement
+    revalidatePath("/patient");
+
+    return { 
+      success: true, 
+      message: "Demande de rendez-vous envoyée avec succès !",
+      data: newAppointment // <--- On utilise la variable définie plus haut
+    };
+
+  } catch (error) {
+    // Log détaillé dans votre terminal VS Code pour le débug
+    console.error("Erreur critique lors de la réservation :", error);
+    
+    return { 
+      error: "Le serveur n'a pas pu enregistrer le rendez-vous. Vérifiez la connexion DB." 
+    };
+  }
 }

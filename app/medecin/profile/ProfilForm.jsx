@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateMedecinProfile } from "@/app/actions/medecin";
+import { updateMedecinProfile } from "../../actions/medecin"; 
 import { useRouter } from "next/navigation";
 
 export default function ProfilForm({ user }) {

@@ -1,10 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../lib/prisma";
 import DoctorDirectory from "./components/DoctorDirectory";
 import Link from "next/link";
 // 👇 Ajout de NextAuth pour vérifier si on est connecté
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-
+import { authOptions } from "./api/auth/[...nextauth]/route";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {

@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import LogoutButton from "./LogoutButton";
-import { prisma } from "@/lib/prisma";
-
+import { authOptions } from "../api/auth/[...nextauth]/route";import LogoutButton from "./LogoutButton";
+import { prisma } from "../../lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function Navbar() {

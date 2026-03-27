@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { registerUser } from "@/app/actions/auth";
+import { registerUser } from "../../actions/auth";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 

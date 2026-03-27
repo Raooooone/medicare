@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../../lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "../api/auth/[...nextauth]/route";
 import BookingForm from "./BookingForm";
 
 export const dynamic = 'force-dynamic';
@@ -8,113 +8,125 @@ export const dynamic = 'force-dynamic';
 export default async function PatientPage() {
   const session = await getServerSession(authOptions);
 
-  // 1. Récupération de l'historique des rendez-vous du patient
+  // 1. Récupération de l'historique des rendez-vous
   const myAppointments = await prisma.appointment.findMany({
     where: { patientId: session.user.id },
-    include: { doctor: true },
-    orderBy: { date: 'desc' } // 'desc' pour afficher les plus récents en premier
+    include: { doctor: { select: { name: true, specialite: true } } },
+    orderBy: { date: 'desc' }
   });
 
-  // 2. Liste des médecins disponibles pour la prise de RDV
+  // 2. Liste des médecins
   const availableDoctors = await prisma.user.findMany({
     where: { role: "MEDECIN" },
     select: { id: true, name: true, specialite: true }
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
-      
-      {/* =========================================
-          COLONNE DE GAUCHE : MON HISTORIQUE (MES RDV)
-          ========================================= */}
-      <div className="lg:col-span-7">
-        <h1 className="text-3xl font-extrabold text-gray-800 mb-6 flex items-center gap-3">
-          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-          Mes Rendez-vous
-        </h1>
+    <div className="bg-gray-50 min-h-screen p-4 md:p-10">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        <div className="bg-white shadow-lg rounded-2xl p-6 border border-gray-100 min-h-[500px]">
-          {myAppointments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center py-20">
-              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        {/* COLONNE GAUCHE : HISTORIQUE */}
+        <div className="lg:col-span-7">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-3 bg-blue-600 rounded-xl shadow-blue-200 shadow-lg">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Mes Rendez-vous</h1>
+          </div>
+          
+          <div className="space-y-4">
+            {myAppointments.length === 0 ? (
+              <div className="bg-white border-2 border-dashed border-gray-200 rounded-3xl p-20 text-center">
+                <p className="text-gray-400 font-medium text-lg">Aucun historique de consultation.</p>
               </div>
-              <p className="text-xl font-bold text-gray-700">Aucun rendez-vous</p>
-              <p className="text-gray-500 mt-2">Vous n'avez pas encore consulté de médecin.</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {myAppointments.map(appt => (
-                <div key={appt.id} className="relative border border-gray-100 rounded-xl p-5 hover:shadow-md transition-shadow bg-gray-50 overflow-hidden">
+            ) : (
+              myAppointments.map(appt => (
+                <div key={appt.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex transition-all hover:shadow-md">
                   
-                  {/* Bande de couleur latérale selon le statut */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                    appt.status === 'CONFIRMED' ? 'bg-green-500' : 
-                    appt.status === 'PENDING' ? 'bg-orange-400' : 
-                    'bg-red-500'
-                  }`}></div>
+                  {/* Indicateur de statut latéral */}
+                  <div className={`w-2 ${
+                    appt.status === 'CONFIRME' ? 'bg-emerald-500' : 
+                    appt.status === 'ANNULE' ? 'bg-rose-500' : 'bg-amber-400'
+                  }`} />
 
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 ml-2">
-                    <div>
-                      <h3 className="font-bold text-xl text-gray-800">
-                        Dr. {appt.doctor.name}
-                      </h3>
-                      <p className="text-blue-600 font-medium text-sm mb-2">{appt.doctor.specialite || "Généraliste"}</p>
-                      <p className="text-gray-600 font-medium flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        {new Date(appt.date).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })}
-                      </p>
+                  <div className="p-6 flex-1">
+                    <div className="flex flex-col md:flex-row justify-between gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">Dr. {appt.doctor.name}</h3>
+                        <p className="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1">
+                          {appt.doctor.specialite || "Généraliste"}
+                        </p>
+                        
+                        <div className="mt-4 flex items-center gap-4 text-sm font-semibold text-gray-500">
+                          <span className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-gray-700">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            {new Date(appt.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                          </span>
+                          <span className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-gray-700">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            {new Date(appt.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end">
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter border-2 ${
+                          appt.status === 'CONFIRME' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                          appt.status === 'ANNULE' ? 'bg-rose-50 text-rose-600 border-rose-100' : 
+                          'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
+                          {appt.status === 'CONFIRME' ? '● Validé' : appt.status === 'ANNULE' ? '● Refusé' : '● En attente'}
+                        </span>
+                      </div>
                     </div>
-                    
-                    <div className="text-right">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                        appt.status === 'CONFIRMED' ? 'bg-green-100 text-green-700 border border-green-200' : 
-                        appt.status === 'PENDING' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 
-                        'bg-red-100 text-red-700 border border-red-200'
-                      }`}>
-                        {appt.status === 'CONFIRMED' ? '✅ Confirmé' : appt.status === 'PENDING' ? '⏳ En attente' : '❌ Annulé'}
-                      </span>
-                    </div>
+
+                    {/* Zone de Notes / Compte-rendu */}
+                    {appt.notes && (
+                      <div className="mt-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-2 italic">
+                          Compte-rendu du médecin :
+                        </span>
+                        <p className="text-sm text-gray-700 leading-relaxed font-medium">
+                          {appt.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
-
-                  {/* Affichage des notes du médecin s'il y en a */}
-                  {appt.notes && (
-                    <div className="mt-5 ml-2 p-4 bg-white border border-blue-100 rounded-lg shadow-sm">
-                      <p className="text-xs font-black text-blue-600 uppercase tracking-wide mb-2 flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Compte-rendu médical
-                      </p>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                        {appt.notes}
-                      </p>
-                    </div>
-                  )}
-
                 </div>
-              ))}
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* COLONNE DROITE : BOOKING */}
+        <div className="lg:col-span-5">
+          <div className="sticky top-10">
+            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 p-8 border border-gray-100 relative overflow-hidden">
+              {/* Décoration */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full -mr-16 -mt-16" />
+              
+              <h2 className="text-2xl font-black text-gray-900 mb-2">Prendre RDV</h2>
+              <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+                Choisissez un créneau avec l'un de nos spécialistes. Une notification vous sera envoyée dès validation.
+              </p>
+
+              <BookingForm doctors={availableDoctors} />
             </div>
-          )}
+            
+            {/* Petit Widget Info */}
+            <div className="mt-6 p-6 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] text-white shadow-lg">
+              <h4 className="font-bold mb-2 flex items-center gap-2 text-sm">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"/></svg>
+                Support Médical 24/7
+              </h4>
+              <p className="text-[11px] opacity-80 leading-snug">
+                Besoin d'aide pour une urgence ? Contactez-nous directement via le numéro vert de la clinique.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* =========================================
-          COLONNE DE DROITE : PRENDRE RENDEZ-VOUS
-          ========================================= */}
-      <div className="lg:col-span-5">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-          <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-          Nouveau Rendez-vous
-        </h2>
-        
-        <div className="bg-white shadow-xl rounded-2xl p-6 border-t-4 border-blue-600 sticky top-24">
-          <p className="text-sm text-gray-500 mb-6">
-            Sélectionnez un spécialiste et choisissez la date et l'heure qui vous conviennent. Votre demande sera envoyée au médecin pour confirmation.
-          </p>
-          {/* Composant Client pour le formulaire */}
-          <BookingForm doctors={availableDoctors} />
-        </div>
       </div>
-
     </div>
   );
 }

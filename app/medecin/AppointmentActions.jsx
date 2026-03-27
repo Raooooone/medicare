@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { updateAppointmentStatus, addConsultationNote } from "@/app/actions/medecin";
-
+import { updateAppointmentStatus, addConsultationNote } from "../actions/medecin";
 export default function AppointmentActions({ appointmentId, currentStatus, initialNote }) {
   const [note, setNote] = useState(initialNote || "");
   const [isSaving, setIsSaving] = useState(false);

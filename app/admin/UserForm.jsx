@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createUser } from "@/app/actions/admin";
-
+import { createUser } from "../actions/admin";
 export default function UserForm() {
   const [role, setRole] = useState("PATIENT");
   const [loading, setLoading] = useState(false);

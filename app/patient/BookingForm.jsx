@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { bookAppointment } from "@/app/actions/patient";
-
+import { bookAppointment } from "../actions/patient";
 export default function BookingForm({ doctors }) {
   const [loading, setLoading] = useState(false);
 

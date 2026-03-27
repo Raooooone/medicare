@@ -1,15 +1,12 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../../lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "../api/auth/[...nextauth]/route";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
-/**
- * Vérifie si l'utilisateur est un médecin authentifié
- */
 async function verifyMedecin() {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "MEDECIN") {
