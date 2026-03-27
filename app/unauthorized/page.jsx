@@ -2,7 +2,7 @@
 import { updateAppointmentStatus } from "../actions/admin";
 import { Check, X, MoreVertical, Ban } from "lucide-react"; // Ajout de Ban pour l'icône
 import { useState } from "react";
-
+export const dynamic = "force-dynamic";
 export default function AppointmentRow({ appointment }) {
   const [loading, setLoading] = useState(false);
 

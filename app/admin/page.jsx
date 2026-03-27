@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import AppointmentRow from "./AppointmentRow";
 import { Calendar, CheckCircle, Clock, Stethoscope, BriefcaseMedical } from "lucide-react";
-
+export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   const appointments = await prisma.appointment.findMany({
     include: {
