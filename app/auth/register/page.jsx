@@ -10,9 +10,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState("PATIENT");
-  const [fileName, setFileName] = useState(""); // NOUVEAU : Pour afficher le nom du fichier
+  const [fileName, setFileName] = useState("");
   
-  // Gestion des étapes pour le médecin (0: Infos de base, 1: Spécialité, 2: Image)
   const [step, setStep] = useState(0);
 
   const handleNextStep = (e) => {
@@ -39,11 +38,9 @@ export default function RegisterPage() {
     if (res?.error) {
       setError(res.error);
       setLoading(false);
-      // Si erreur de spécialité, on ramène à l'étape 1
       if (res.error.includes("spécialité")) setStep(1);
       else setStep(0); 
     } else {
-      // Connexion automatique après l'inscription
       const loginRes = await signIn("credentials", {
         email,
         password,
@@ -71,10 +68,8 @@ export default function RegisterPage() {
           <p className="text-red-500 text-center mb-4 text-sm bg-red-50 p-2 border border-red-200 rounded">{error}</p>
         )}
 
-        {/* 👇 NOUVEAU : Ajout de encType pour permettre l'upload de fichiers 👇 */}
         <form id="register-form" onSubmit={handleNextStep} encType="multipart/form-data" className="flex flex-col gap-4">
           
-          {/* ÉTAPE 0 : INFOS DE BASE */}
           <div className={step === 0 ? "flex flex-col gap-4 animate-in fade-in slide-in-from-right-4" : "hidden"}>
             <input type="text" name="name" placeholder="Nom complet" required={step===0} className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
             <input type="email" name="email" placeholder="Adresse Email" required={step===0} className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
@@ -97,19 +92,17 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* ÉTAPE 1 : SPÉCIALITÉ */}
           <div className={selectedRole === "MEDECIN" && step === 1 ? "flex flex-col gap-4 animate-in fade-in slide-in-from-right-4" : "hidden"}>
             <label className="font-medium text-gray-700">Quelle est votre spécialité ?</label>
             <input type="text" name="specialite" placeholder="Ex: Cardiologue, Généraliste..." className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
 
-          {/* ÉTAPE 2 : UPLOAD D'IMAGE */}
           <div className={selectedRole === "MEDECIN" && step === 2 ? "flex flex-col gap-4 animate-in fade-in" : "hidden"}>
             <label className="font-medium text-gray-700">Photo de profil</label>
             <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors relative">
               <input 
                 type="file" 
-                name="image" // ⚠️ Attention : le nom doit être "image" pour correspondre à votre fichier backend auth.js !
+                name="image" 
                 accept="image/*" 
                 className="hidden" 
                 id="file-upload"
